@@ -47,8 +47,11 @@ export const appRouter = router({
         hydraHeadAvatar: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        // TODO: Implement profile update
-        return { success: true };
+        const updatedUser = await db.updateUserProfile(ctx.user!.id, input);
+        return {
+          success: true,
+          user: updatedUser,
+        } as const;
       }),
   }),
 

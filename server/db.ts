@@ -1,15 +1,21 @@
 import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql, { type Pool } from "mysql2/promise";
 import { InsertUser, users, lessons, userProgress, leaderboard, reports, gameSessions, userInventory, notifications } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { ENV } from "./_core/env";
 
+let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_db && ENV.databaseUrl) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      if (!_pool) {
+        _pool = mysql.createPool({
+          uri: ENV.databaseUrl,
+        });
+      }
+      _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -95,6 +101,28 @@ export async function getUserById(id: number) {
 
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateUserProfile(userId: number, data: { name?: string; hydraHeadAvatar?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const updateData: Partial<InsertUser> = {};
+
+  if (typeof data.name === "string") {
+    updateData.name = data.name;
+  }
+
+  if (typeof data.hydraHeadAvatar === "string") {
+    updateData.hydraHeadAvatar = data.hydraHeadAvatar;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return;
+  }
+
+  await db.update(users).set(updateData).where(eq(users.id, userId));
+  return await getUserById(userId);
 }
 
 // Lesson queries

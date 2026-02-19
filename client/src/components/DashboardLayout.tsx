@@ -24,8 +24,9 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import { trpc } from "@/lib/trpc";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Page 1", path: "/" },
@@ -114,6 +115,10 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+  const healthQuery = trpc.system.health.useQuery(
+    { timestamp: Date.now() },
+    { refetchInterval: 30000 }
+  );
 
   useEffect(() => {
     if (isCollapsed) {
@@ -169,10 +174,28 @@ function DashboardLayoutContent({
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 justify-between w-full">
                   <span className="font-semibold tracking-tight truncate">
                     Navigation
                   </span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span
+                      className={
+                        healthQuery.isLoading
+                          ? "inline-flex h-2 w-2 rounded-full bg-yellow-400"
+                          : healthQuery.data?.dbOk
+                          ? "inline-flex h-2 w-2 rounded-full bg-emerald-500"
+                          : "inline-flex h-2 w-2 rounded-full bg-red-500"
+                      }
+                    />
+                    <span className="text-muted-foreground">
+                      {healthQuery.isLoading
+                        ? "Checking system"
+                        : healthQuery.data?.dbOk
+                        ? "System online"
+                        : "System issue"}
+                    </span>
+                  </div>
                 </div>
               ) : null}
             </div>

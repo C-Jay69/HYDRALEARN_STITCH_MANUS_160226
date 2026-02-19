@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
+import { getDb } from "../db";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -9,9 +10,20 @@ export const systemRouter = router({
         timestamp: z.number().min(0, "timestamp cannot be negative"),
       })
     )
-    .query(() => ({
-      ok: true,
-    })),
+    .query(async () => {
+      let dbOk = false;
+      try {
+        const db = await getDb();
+        dbOk = !!db;
+      } catch {
+        dbOk = false;
+      }
+
+      return {
+        ok: true,
+        dbOk,
+      } as const;
+    }),
 
   notifyOwner: adminProcedure
     .input(

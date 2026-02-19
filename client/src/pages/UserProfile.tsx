@@ -3,14 +3,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function UserProfile() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
     hydraHeadAvatar: user?.hydraHeadAvatar || "dragon_1",
+  });
+
+  const updateProfileMutation = trpc.user.updateProfile.useMutation({
+    onSuccess: async () => {
+      await refresh();
+      toast.success("Profile updated");
+      setIsEditing(false);
+    },
+    onError: error => {
+      toast.error(error.message || "Failed to update profile");
+    },
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -22,8 +35,10 @@ export default function UserProfile() {
   };
 
   const handleSave = async () => {
-    // TODO: Implement profile update via tRPC
-    setIsEditing(false);
+    await updateProfileMutation.mutateAsync({
+      name: formData.name,
+      hydraHeadAvatar: formData.hydraHeadAvatar,
+    });
   };
 
   const avatarOptions = [
